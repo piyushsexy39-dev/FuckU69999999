@@ -38,7 +38,10 @@ async def owner_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🏏 Total Matches Recorded: <b>{match_count:,}</b>\n"
         f"⚡ Total Career Runs: <b>{total_runs:,}</b>\n\n"
         f"🛠️ <b>Quick Admin Commands:</b>\n"
-        f"• <code>/broadcast &lt;text&gt;</code> - Broadcast message to users\n"
+        f"• <code>/broadcast &lt;text&gt;</code> - Broadcast message to users (owner + mods)\n"
+        f"• <code>/mod</code> / <code>/unmod</code> - Make or remove a moderator (owner only)\n"
+        f"• <code>/bannigga</code> / <code>/unbannigga</code> - Ban or unban a player (owner + mods)\n"
+        f"• <code>/modlist</code> - Show owner and moderators\n"
         f"• <code>/donate &lt;user_id or @username&gt; &lt;amount&gt;</code> - Add diamonds\n"
         f"• <code>/serverstats</code> - System diagnostics"
     )
@@ -55,9 +58,11 @@ async def owner_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
 
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from ..services.moderation import moderation_service
     user = update.effective_user
     message = update.message
-    if not _is_owner(user) or not message:
+    await moderation_service.ensure_loaded()
+    if not message or not user or not moderation_service.is_staff(user.id):
         return
 
     args = context.args

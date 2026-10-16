@@ -61,6 +61,14 @@ from .handlers.owner import (
     donate_command,
 )
 from .handlers.team import changeover_command
+from .handlers.moderation import (
+    ban_gate,
+    bannigga_command,
+    mod_command,
+    modlist_command,
+    unbannigga_command,
+    unmod_command,
+)
 
 logger = logging.getLogger("gullycric")
 
@@ -105,6 +113,7 @@ def create_bot_application() -> Application:
         .build()
     )
 
+    app.add_handler(TypeHandler(Update, ban_gate), group=-2)
     app.add_handler(TypeHandler(Update, track_group_chat_update), group=-1)
 
     # Core Navigation & Menus
@@ -165,6 +174,11 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("addrubies", addrubies_command))
     app.add_handler(CommandHandler("donate", donate_command))
     app.add_handler(CommandHandler("serverstats", owner_command))
+    app.add_handler(CommandHandler("mod", mod_command))
+    app.add_handler(CommandHandler("unmod", unmod_command))
+    app.add_handler(CommandHandler("modlist", modlist_command))
+    app.add_handler(CommandHandler("bannigga", bannigga_command))
+    app.add_handler(CommandHandler("unbannigga", unbannigga_command))
 
 
 

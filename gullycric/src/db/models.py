@@ -131,3 +131,23 @@ class Bet(Base):
     status = Column(String(32), default="pending")  # pending, won, lost
     payout = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class Moderator(Base):
+    __tablename__ = "moderators"
+
+    user_id = Column(BigInteger, primary_key=True)
+    username = Column(String(64), nullable=True)
+    first_name = Column(String(128), default="Moderator")
+    added_by = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class BannedUser(Base):
+    __tablename__ = "banned_users"
+
+    user_id = Column(BigInteger, primary_key=True)
+    username = Column(String(64), nullable=True)
+    first_name = Column(String(128), default="Player")
+    banned_by = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
