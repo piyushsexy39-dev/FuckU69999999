@@ -2731,7 +2731,7 @@ async def remove_player_command(update: Update, context: ContextTypes.DEFAULT_TY
         logger.error(f"Error in remove_player_command: {e}", exc_info=True)
 
 async def penalty_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Host or a team captain adjusts a team's runs: /penalty +6, /penalty -5.
+    """Host or bot owner adjusts a team's runs: /penalty +6, /penalty -5.
 
     Team: reply to a player's message to use that player's team, or add `a` / `b`
     (e.g. `/penalty -5 b`). Otherwise the batting team is used.
@@ -2745,14 +2745,9 @@ async def penalty_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.reply_html("⚠️ No active team match currently!")
             return
 
-        is_allowed = (
-            user.id == session.host_id
-            or user.id == session.captain_a_id
-            or user.id == session.captain_b_id
-            or permission_service.is_owner(user.id)
-        )
+        is_allowed = user.id == session.host_id or permission_service.is_owner(user.id)
         if not is_allowed:
-            await message.reply_html("⚠️ Only the host or a team captain can use /penalty.")
+            await message.reply_html("⚠️ Only the host or the bot owner can use /penalty.")
             return
 
         args = list(context.args or [])
