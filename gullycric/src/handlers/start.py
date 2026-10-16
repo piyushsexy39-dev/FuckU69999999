@@ -295,6 +295,7 @@ async def menu_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             "• <code>/changecap [a/b]</code> - Host/Captains rotate team captain\n"
             "• <code>/changehost</code> - Host transfers Game Master role\n"
             "• <code>/spamfree</code> - Host, captains, or bot owner toggle repeat-delivery protection\n"
+            "• <code>/penalty +6</code> / <code>/penalty -5</code> - Host/Captains add or cut runs (reply to a player or add a/b)\n"
             "• <code>/endmatch</code> - Host terminates active match immediately"
         )
         await safe_edit_or_reply(query, text, get_help_keyboard())

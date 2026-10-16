@@ -2730,6 +2730,103 @@ async def remove_player_command(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception as e:
         logger.error(f"Error in remove_player_command: {e}", exc_info=True)
 
+async def penalty_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Host or a team captain adjusts a team's runs: /penalty +6, /penalty -5.
+
+    Team: reply to a player's message to use that player's team, or add `a` / `b`
+    (e.g. `/penalty -5 b`). Otherwise the batting team is used.
+    """
+    try:
+        message = update.effective_message
+        user = update.effective_user
+        chat = update.effective_chat
+        session = team_match_service.get_session(chat.id)
+        if not session or session.status != "active":
+            await message.reply_html("⚠️ No active team match currently!")
+            return
+
+        is_allowed = (
+            user.id == session.host_id
+            or user.id == session.captain_a_id
+            or user.id == session.captain_b_id
+            or permission_service.is_owner(user.id)
+        )
+        if not is_allowed:
+            await message.reply_html("⚠️ Only the host or a team captain can use /penalty.")
+            return
+
+        args = list(context.args or [])
+        amount = None
+        side_arg = None
+        for raw in args:
+            token = raw.strip()
+            if amount is None and token.lstrip("+-").isdigit() and token.lstrip("+-") != "":
+                amount = int(token)
+            elif token.lower() in ("a", "b", "1", "2", "team_a", "team_b"):
+                side_arg = token.lower()
+        if amount is None or amount == 0:
+            await message.reply_html(
+                "Usage: <code>/penalty +6</code> to add runs, <code>/penalty -5</code> to cut runs.\n"
+                "Reply to a player to apply it to their team, or add <code>a</code>/<code>b</code> "
+                "(e.g. <code>/penalty -5 b</code>). Default: the batting team."
+            )
+            return
+        if abs(amount) > 100:
+            await message.reply_html("⚠️ Penalty can be at most 100 runs at a time.")
+            return
+
+        team = session.batting_team
+        if message.reply_to_message and message.reply_to_message.from_user:
+            target_id = message.reply_to_message.from_user.id
+            if any(p.user_id == target_id for p in session.team_a_players):
+                team = "team_a"
+            elif any(p.user_id == target_id for p in session.team_b_players):
+                team = "team_b"
+        elif side_arg in ("a", "1", "team_a"):
+            team = "team_a"
+        elif side_arg in ("b", "2", "team_b"):
+            team = "team_b"
+
+        if team == "team_a":
+            before = session.total_runs_a
+            session.total_runs_a = max(0, before + amount)
+            applied = session.total_runs_a - before
+            team_name = session.team_a_name
+            new_total = session.total_runs_a
+        else:
+            before = session.total_runs_b
+            session.total_runs_b = max(0, before + amount)
+            applied = session.total_runs_b - before
+            team_name = session.team_b_name
+            new_total = session.total_runs_b
+
+        # In the 2nd innings the first-batting team's score is the target.
+        if session.current_innings == 2 and team != session.batting_team:
+            session.target = new_total
+
+        sign = "+" if applied >= 0 else "-"
+        icon = "⚠️" if applied >= 0 else "🔻"
+        await message.reply_html(
+            f"{icon} <b>PENALTY:</b> {sign}{abs(applied)} runs for <b>{html.escape(team_name)}</b>!\n"
+            f"📊 New total: <b>{new_total}</b>"
+            + (f"\n🎯 Target is now <b>{session.target + 1}</b>." if session.current_innings == 2 and team != session.batting_team else "")
+        )
+
+        if session.current_innings == 2 and team == session.batting_team and new_total > session.target:
+            batting_roster = session.get_batting_roster()
+            curr_wickets = session.wickets_a if team == "team_a" else session.wickets_b
+            wickets_in_hand = max(1, len(batting_roster) - 1 - curr_wickets)
+            await _update_team_live_score(context, session)
+            await _conclude_team_match(
+                context, session,
+                f"🎉 <b>Winner: {html.escape(team_name)} won by {wickets_in_hand} wickets!</b>",
+            )
+            return
+        await _update_team_live_score(context, session)
+    except Exception as e:
+        logger.error(f"Error in penalty_command: {e}", exc_info=True)
+
+
 async def change_host_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Host command: /changehost by replying to user."""
     try:
