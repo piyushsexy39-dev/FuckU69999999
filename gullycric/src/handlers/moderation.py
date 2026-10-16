@@ -133,13 +133,15 @@ async def modlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lines = ["👑 <b>OWNER</b>"]
     for oid in config.owner_ids:
-        lines.append(f"• {_link(oid, await display_name(oid, names.get(oid)) or "Owner")}")
+        owner_name = await display_name(oid, names.get(oid)) or "Owner"
+        lines.append(f"• {_link(oid, owner_name)}")
     lines.append("")
     lines.append(f"🛡️ <b>MODERATORS ({len(moderation_service.mods)})</b>")
     if moderation_service.mods:
         for uid, info in moderation_service.mods.items():
             handle = f" (@{html.escape(info['username'])})" if info.get("username") else ""
-            lines.append(f"• {_link(uid, await display_name(uid, info.get('name')) or 'Moderator')}{handle}")
+            mod_name = await display_name(uid, info.get("name")) or "Moderator"
+            lines.append(f"• {_link(uid, mod_name)}{handle}")
     else:
         lines.append("• No moderators yet.")
     await update.effective_message.reply_html("\n".join(lines))
