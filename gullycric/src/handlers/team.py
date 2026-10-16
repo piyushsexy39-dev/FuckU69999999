@@ -2616,8 +2616,10 @@ async def shift_player_command(update: Update, context: ContextTypes.DEFAULT_TYP
             await message.reply_html("⚠️ That player is not in either team.")
             return
         captain_id = session.captain_a_id if source == "team_a" else session.captain_b_id
-        if user.id != captain_id:
-            await message.reply_html("⚠️ Only the captain of that player's current team can use /shift.")
+        is_host = user.id == session.host_id
+        is_own_team_captain = user.id == captain_id
+        if not (is_host or is_own_team_captain):
+            await message.reply_html("⚠️ Only the host or the captain of that player's current team can use /shift.")
             return
 
         target = session.get_current_striker()
@@ -2693,8 +2695,10 @@ async def remove_player_command(update: Update, context: ContextTypes.DEFAULT_TY
             await message.reply_html("⚠️ That player is not in either team.")
             return
         captain_id = session.captain_a_id if source == "team_a" else session.captain_b_id
-        if user.id != captain_id:
-            await message.reply_html("⚠️ Only that player's team captain can use /remove.")
+        is_host = user.id == session.host_id
+        is_own_team_captain = user.id == captain_id
+        if not (is_host or is_own_team_captain):
+            await message.reply_html("⚠️ Only the host or that player's team captain can use /remove.")
             return
 
         striker = session.get_current_striker()
