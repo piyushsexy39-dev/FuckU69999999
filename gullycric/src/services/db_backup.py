@@ -152,19 +152,29 @@ async def send_backup(bot: Bot, reason: str = "auto", force: bool = False) -> st
         _last_digest = digest
         try:
             await bot.pin_chat_message(chat_id=chat_id, message_id=sent.message_id, disable_notification=True)
-            if previous and previous.message_id != sent.message_id and _is_our_backup(previous):
-                await bot.unpin_chat_message(chat_id=chat_id, message_id=previous.message_id)
         except Exception as error:
+            # keep the older backup untouched if the new one could not be pinned
             logger.warning("Backup sent but could not be pinned: %s", error)
+            return "sent"
+        if previous and previous.message_id != sent.message_id and _is_our_backup(previous):
+            # only one backup stays in the chat: remove the previous one (this also unpins it)
+            try:
+                await bot.delete_message(chat_id=chat_id, message_id=previous.message_id)
+            except Exception as error:
+                logger.info("Could not delete the previous backup (older than 48h?): %s", error)
+                try:
+                    await bot.unpin_chat_message(chat_id=chat_id, message_id=previous.message_id)
+                except Exception:
+                    pass
     return "sent"
 
 
 async def run_backup_loop(bot: Bot):
-    """Send a backup every BACKUP_INTERVAL_MINUTES (default 30) when something changed."""
+    """Send a backup every BACKUP_INTERVAL_MINUTES (default 60) when something changed."""
     try:
-        interval = max(5, int(os.getenv("BACKUP_INTERVAL_MINUTES", "30"))) * 60
+        interval = max(5, int(os.getenv("BACKUP_INTERVAL_MINUTES", "60"))) * 60
     except ValueError:
-        interval = 30 * 60
+        interval = 60 * 60
     await asyncio.sleep(120)
     warned = False
     while True:

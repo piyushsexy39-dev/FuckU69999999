@@ -22,10 +22,10 @@ Tests (optional): pip install -r requirements-dev.txt && pytest
 
 ## Keeping stats across redeploys / new hosts
 
-The bot sends a database snapshot to the owner's Telegram DM every 30 minutes (when something changed) and pins it.
+The bot sends a database snapshot to the owner's Telegram DM every 60 minutes (when something changed), pins it and deletes the previous one so only one backup stays in the chat.
 On start-up with an empty database it downloads the pinned snapshot and restores it automatically, so moving to a new
 host or redeploying without a volume does not reset stats. The owner must have pressed /start on the bot in DM once.
 
 - `/backupdb` (owner) - send and pin a backup right now
 - `/restoredb` (owner) - reply to a backup `.db` file (or an old `gullycric.db`) to restore it
-- Optional env vars: `BACKUP_INTERVAL_MINUTES` (default 30), `BACKUP_CHAT_ID` (default: first OWNER_IDS id)
+- Optional env vars: `BACKUP_INTERVAL_MINUTES` (default 60), `BACKUP_CHAT_ID` (default: first OWNER_IDS id)
