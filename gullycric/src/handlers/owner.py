@@ -1,5 +1,6 @@
 import logging
 import html
+import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from sqlalchemy import select, func
@@ -59,6 +60,49 @@ async def owner_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.callback_query:
         await update.callback_query.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
 
+BROADCAST_HEADER = "📢 <b>ULTIMATE CRICKET ANNOUNCEMENT</b>\n━━━━━━━━━━━━━━━━━━━━━━"
+_BROADCAST_PREFIX = re.compile(r"^/broadcast(?:@\w+)?\s*", re.IGNORECASE)
+
+
+def _strip_broadcast_prefix(text_html: str) -> str:
+    return _BROADCAST_PREFIX.sub("", text_html or "", count=1).strip()
+
+
+def _build_broadcast_payload(message):
+    """Work out what to broadcast. Returns (photo_file_id, body_html, copy_source).
+
+    - Photo sent with a /broadcast caption -> photo + that caption.
+    - /broadcast as a reply to a text or photo message -> that message's content
+      (anything you type after /broadcast is added underneath).
+    - /broadcast as a reply to another kind of message (video, file...) -> copied as is.
+    - Plain /broadcast text -> text only.
+    """
+    typed = _strip_broadcast_prefix(message.text_html or message.caption_html or "")
+    if message.photo:
+        return message.photo[-1].file_id, typed, None
+    replied = message.reply_to_message
+    if replied:
+        if replied.photo:
+            body = replied.caption_html or ""
+            return replied.photo[-1].file_id, "\n\n".join(x for x in (body, typed) if x), None
+        if replied.text:
+            body = replied.text_html or ""
+            return None, "\n\n".join(x for x in (body, typed) if x), None
+        return None, typed, (replied.chat_id, replied.message_id)
+    return None, typed, None
+
+
+async def _send_announcement(bot, chat_id, photo, body):
+    full = BROADCAST_HEADER + ("\n" + body if body else "")
+    if photo is None:
+        await bot.send_message(chat_id=chat_id, text=full, parse_mode="HTML")
+    elif len(full) <= 1024:
+        await bot.send_photo(chat_id=chat_id, photo=photo, caption=full, parse_mode="HTML")
+    else:  # photo captions are limited to 1024 characters
+        await bot.send_photo(chat_id=chat_id, photo=photo, caption=BROADCAST_HEADER, parse_mode="HTML")
+        await bot.send_message(chat_id=chat_id, text=body, parse_mode="HTML")
+
+
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from ..services.moderation import moderation_service
     user = update.effective_user
@@ -67,12 +111,15 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not message or not user or not moderation_service.is_staff(user.id):
         return
 
-    args = context.args
-    if not args:
-        await update.message.reply_html("⚠️ Usage: <code>/broadcast Your message here</code>")
+    photo, msg, copy_source = _build_broadcast_payload(message)
+    if not photo and not msg and not copy_source:
+        await update.message.reply_html(
+            "⚠️ <b>How to broadcast</b>\n"
+            "• <code>/broadcast Your message here</code>\n"
+            "• Send a photo with the caption <code>/broadcast your text</code>\n"
+            "• Reply to any message or photo with <code>/broadcast</code>"
+        )
         return
-
-    msg = " ".join(args)
     async with async_session_factory() as session:
         # Include any groups from active matches or match history
         from ..services.team_match_service import team_match_service
@@ -112,11 +159,14 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for chat_id, target_type in targets:
         try:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"📢 <b>ULTIMATE CRICKET ANNOUNCEMENT</b>\n━━━━━━━━━━━━━━━━━━━━━━\n{msg}",
-                parse_mode="HTML"
-            )
+            if copy_source:
+                await context.bot.copy_message(
+                    chat_id=chat_id,
+                    from_chat_id=copy_source[0],
+                    message_id=copy_source[1],
+                )
+            else:
+                await _send_announcement(context.bot, chat_id, photo, msg)
             if target_type == "DM":
                 successful_dms += 1
             else:

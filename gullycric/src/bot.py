@@ -172,6 +172,10 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("admin", owner_command))
     app.add_handler(CommandHandler("panel", owner_command))
     app.add_handler(CommandHandler("broadcast", broadcast_command))
+    app.add_handler(MessageHandler(
+        filters.PHOTO & filters.CaptionRegex(r"(?i)^/broadcast(@\w+)?(\s|$)"),
+        broadcast_command,
+    ))
     app.add_handler(CommandHandler("addrubies", addrubies_command))
     app.add_handler(CommandHandler("donate", donate_command))
     app.add_handler(CommandHandler("serverstats", owner_command))
