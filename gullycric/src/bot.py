@@ -47,6 +47,7 @@ from .handlers.team import (
     remove_player_command,
     shift_player_command,
     penalty_command,
+    rebat_command,
 )
 from .handlers.stats import (
     stats_command,
@@ -143,6 +144,7 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("remove", remove_player_command))
     app.add_handler(CommandHandler("shift", shift_player_command))
     app.add_handler(CommandHandler("penalty", penalty_command))
+    app.add_handler(CommandHandler("rebat", rebat_command))
     app.add_handler(CommandHandler("endmatch", end_match_command))
     app.add_handler(CommandHandler("cancelteam", end_match_command))
     app.add_handler(CommandHandler("endteam", end_match_command))

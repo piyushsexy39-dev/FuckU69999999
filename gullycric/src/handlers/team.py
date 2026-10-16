@@ -2730,6 +2730,83 @@ async def remove_player_command(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception as e:
         logger.error(f"Error in remove_player_command: {e}", exc_info=True)
 
+async def rebat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Let a dismissed batter bat again: /rebat <number|@username|user_id> or reply to the player.
+
+    Only the host, the bot owner or the batting team's captain may use it. The player
+    must belong to the batting team, be OUT, and not be at the crease. Their runs and
+    balls are kept and the wicket that was already counted stays on the scorecard; they
+    simply become available again in /batting.
+    """
+    try:
+        message = update.effective_message
+        user = update.effective_user
+        chat = update.effective_chat
+        session = team_match_service.get_session(chat.id)
+        if not session or session.status != "active":
+            await message.reply_html("⚠️ No active team match currently!")
+            return
+
+        is_allowed = (
+            user.id == session.host_id
+            or user.id == session.get_batting_captain_id()
+            or permission_service.is_owner(user.id)
+        )
+        if not is_allowed:
+            await message.reply_html("⚠️ Only the host, the batting captain or the bot owner can use /rebat.")
+            return
+
+        roster = session.get_batting_roster()
+        target_idx = None
+        if message.reply_to_message and message.reply_to_message.from_user:
+            replied_id = message.reply_to_message.from_user.id
+            target_idx = next((i for i, p in enumerate(roster) if p.user_id == replied_id), None)
+        elif context.args:
+            raw = context.args[0].strip("()[] ").lstrip("@")
+            if raw.isdigit():
+                number = int(raw)
+                if 1 <= number <= len(roster):
+                    target_idx = number - 1
+                else:
+                    target_idx = next((i for i, p in enumerate(roster) if p.user_id == number), None)
+            else:
+                async with async_session_factory() as db_session:
+                    registered_user = (await db_session.execute(
+                        select(UserRecord).where(func.lower(UserRecord.username) == raw.lower())
+                    )).scalar_one_or_none()
+                if registered_user:
+                    target_idx = next((i for i, p in enumerate(roster) if p.user_id == registered_user.user_id), None)
+        else:
+            out_players = [f"{i + 1}. {mention(p)}" for i, p in enumerate(roster) if p.is_out]
+            lines = ["Usage: <code>/rebat &lt;number&gt;</code>, <code>/rebat @username</code>, or reply to the player with <code>/rebat</code>."]
+            lines.append("")
+            lines.append("🚫 <b>Out players you can bring back:</b>\n" + "\n".join(out_players) if out_players else "ℹ️ No batter is out right now.")
+            await message.reply_html("\n".join(lines))
+            return
+
+        if target_idx is None:
+            await message.reply_html("⚠️ That player is not in the batting team.")
+            return
+
+        player = roster[target_idx]
+        if not player.is_out:
+            if session.striker_idx == target_idx or session.non_striker_idx == target_idx:
+                await message.reply_html("ℹ️ That player is already at the crease!")
+            else:
+                await message.reply_html("ℹ️ That player is not out, so they can already bat.")
+            return
+
+        player.is_out = False
+        await message.reply_html(
+            f"🔁 {mention(player)} is back in! Runs ({player.runs}) and balls ({player.balls}) are kept.\n"
+            f"👉 Batting Captain {_team_captain_mention(session, session.batting_team)} (or Host), "
+            "pick batters with <code>/batting</code>."
+        )
+        await _update_team_live_score(context, session)
+    except Exception as e:
+        logger.error(f"Error in rebat_command: {e}", exc_info=True)
+
+
 async def penalty_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Host or bot owner adjusts a team's runs: /penalty +6, /penalty -5.
 
