@@ -2571,109 +2571,156 @@ async def change_cap_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         logger.error(f"Error in change_cap_command: {e}", exc_info=True)
 
-async def remove_player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Host command: /remove <user> A|B."""
+async def shift_player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Move a player to the other team; only their current team's captain may do this."""
     try:
-        chat = update.effective_chat
+        message = update.effective_message
         user = update.effective_user
+        chat = update.effective_chat
         session = team_match_service.get_session(chat.id)
         if not session:
-            await update.message.reply_html("❌ No active team match lobby in this chat.")
-            return
-
-        is_admin = await permission_service.is_chat_admin(context.bot, session.chat_id, user.id)
-        if user.id != session.host_id and not permission_service.is_owner(user.id) and not is_admin:
-            await update.message.reply_html("⚠️ Only the match host can remove players!")
-            return
-
-        if not context.args:
-            await update.message.reply_html("Usage: <code>/remove @username A</code>, <code>/remove &lt;user_id&gt; B</code>, or reply to player with <code>/remove A</code>")
+            await message.reply_html("❌ No active team match in this chat.")
             return
 
         target_user = None
-        team_arg = ""
-
-        if update.message.reply_to_message and update.message.reply_to_message.from_user:
-            target_user = update.message.reply_to_message.from_user
-            team_arg = context.args[0].lower()
-        elif update.message.entities:
-            for ent in update.message.entities:
-                if ent.type == "text_mention" and ent.user:
-                    target_user = ent.user
-                    break
-            if len(context.args) >= 2:
-                team_arg = context.args[1].lower()
-            elif len(context.args) == 1:
-                team_arg = context.args[0].lower()
-        
-        if not target_user and len(context.args) >= 2:
-            arg1 = context.args[0].strip()
-            team_arg = context.args[1].lower()
-            if arg1.isdigit():
-                t_id = int(arg1)
-                found_p = next((p for p in session.team_a_players + session.team_b_players if p.user_id == t_id), None)
-                if found_p:
-                    target_user = SimpleNamespace(id=found_p.user_id, first_name=found_p.name, username=None)
+        if message.reply_to_message and message.reply_to_message.from_user:
+            target_user = message.reply_to_message.from_user
+        elif context.args:
+            raw = context.args[0].strip().lstrip("@")
+            if raw.isdigit():
+                target_id = int(raw)
+                player = next((p for p in session.team_a_players + session.team_b_players if p.user_id == target_id), None)
+                if player:
+                    target_user = SimpleNamespace(id=player.user_id, first_name=player.name, username=None)
                 else:
-                    target_user = SimpleNamespace(id=t_id, first_name="Player", username=None)
+                    await message.reply_html("⚠️ Player is not in either team.")
+                    return
             else:
-                raw_arg = arg1.lstrip("@")
                 async with async_session_factory() as db_session:
-                    registered_user = (
-                        await db_session.execute(
-                            select(UserRecord).where(
-                                func.lower(UserRecord.username) == raw_arg.lower()
-                            )
-                        )
-                    ).scalar_one_or_none()
+                    registered_user = (await db_session.execute(
+                        select(UserRecord).where(func.lower(UserRecord.username) == raw.lower())
+                    )).scalar_one_or_none()
                 if registered_user:
                     target_user = SimpleNamespace(id=registered_user.user_id, first_name=registered_user.first_name or "Player", username=registered_user.username)
                 else:
-                    await update.message.reply_html("⚠️ Could not resolve username. Please reply to the player's message or provide their numeric Telegram ID.")
+                    await message.reply_html("⚠️ Username not found. Reply to the player's message or use their numeric Telegram ID.")
                     return
-
         if not target_user:
-            await update.message.reply_html("⚠️ Please specify a user or reply to their message, followed by team A or B.")
+            await message.reply_html("Usage: reply to a player with <code>/shift</code>, or use <code>/shift @username</code> / <code>/shift user_id</code>.")
             return
 
-        if team_arg not in ("a", "b", "1", "2"):
-            await update.message.reply_html("⚠️ Please specify team A or B (e.g. <code>/remove @user A</code>).")
+        source = "team_a" if any(p.user_id == target_user.id for p in session.team_a_players) else (
+            "team_b" if any(p.user_id == target_user.id for p in session.team_b_players) else None
+        )
+        if not source:
+            await message.reply_html("⚠️ That player is not in either team.")
+            return
+        captain_id = session.captain_a_id if source == "team_a" else session.captain_b_id
+        if user.id != captain_id:
+            await message.reply_html("⚠️ Only the captain of that player's current team can use /shift.")
             return
 
-        team_choice = "team_a" if team_arg in ("a", "1") else "team_b"
-        roster = session.team_a_players if team_choice == "team_a" else session.team_b_players
-        
-        player_to_remove = next((p for p in roster if p.user_id == target_user.id), None)
-        if not player_to_remove:
-            team_name_str = session.team_a_name if team_choice == "team_a" else session.team_b_name
-            await update.message.reply_html(f"⚠️ {mention(target_user)} is not a member of {team_name_str}!")
+        target = session.get_current_striker()
+        non_striker = session.get_current_non_striker()
+        bowler = session.get_current_bowler()
+        if any(p and p.user_id == target_user.id for p in (target, non_striker, bowler)):
+            await message.reply_html("⚠️ A player currently at the crease or bowling cannot be shifted.")
+            return
+
+        if source == "team_a":
+            player = next(p for p in session.team_a_players if p.user_id == target_user.id)
+            session.team_a_players = [p for p in session.team_a_players if p.user_id != target_user.id]
+            session.team_b_players.append(player)
+            if session.captain_a_id == target_user.id:
+                session.captain_a_id = session.team_a_players[0].user_id if session.team_a_players else None
+        else:
+            player = next(p for p in session.team_b_players if p.user_id == target_user.id)
+            session.team_b_players = [p for p in session.team_b_players if p.user_id != target_user.id]
+            session.team_a_players.append(player)
+            if session.captain_b_id == target_user.id:
+                session.captain_b_id = session.team_b_players[0].user_id if session.team_b_players else None
+
+        destination = session.team_b_name if source == "team_a" else session.team_a_name
+        await message.reply_html(f"✅ <b>{html.escape(player.name)}</b> has been shifted to <b>{html.escape(destination)}</b>.")
+        if session.status == "active":
+            await _update_team_live_score(context, session)
+    except Exception as e:
+        logger.error(f"Error in shift_player_command: {e}", exc_info=True)
+
+
+async def remove_player_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Remove a player from their team; only that team's captain may do this."""
+    try:
+        message = update.effective_message
+        user = update.effective_user
+        chat = update.effective_chat
+        session = team_match_service.get_session(chat.id)
+        if not session:
+            await message.reply_html("❌ No active team match in this chat.")
+            return
+
+        target_user = None
+        if message.reply_to_message and message.reply_to_message.from_user:
+            target_user = message.reply_to_message.from_user
+        elif context.args:
+            raw = context.args[0].strip().lstrip("@")
+            if raw.isdigit():
+                target_id = int(raw)
+                player = next((p for p in session.team_a_players + session.team_b_players if p.user_id == target_id), None)
+                if player:
+                    target_user = SimpleNamespace(id=player.user_id, first_name=player.name, username=None)
+                else:
+                    await message.reply_html("⚠️ Player is not in either team.")
+                    return
+            else:
+                async with async_session_factory() as db_session:
+                    registered_user = (await db_session.execute(
+                        select(UserRecord).where(func.lower(UserRecord.username) == raw.lower())
+                    )).scalar_one_or_none()
+                if registered_user:
+                    target_user = SimpleNamespace(id=registered_user.user_id, first_name=registered_user.first_name or "Player", username=registered_user.username)
+                else:
+                    await message.reply_html("⚠️ Username not found. Reply to the player's message or use their numeric Telegram ID.")
+                    return
+        if not target_user:
+            await message.reply_html("Usage: reply to a player with <code>/remove</code>, or use <code>/remove @username</code> / <code>/remove user_id</code>.")
+            return
+
+        source = "team_a" if any(p.user_id == target_user.id for p in session.team_a_players) else (
+            "team_b" if any(p.user_id == target_user.id for p in session.team_b_players) else None
+        )
+        if not source:
+            await message.reply_html("⚠️ That player is not in either team.")
+            return
+        captain_id = session.captain_a_id if source == "team_a" else session.captain_b_id
+        if user.id != captain_id:
+            await message.reply_html("⚠️ Only that player's team captain can use /remove.")
             return
 
         striker = session.get_current_striker()
         non_striker = session.get_current_non_striker()
         bowler = session.get_current_bowler()
-
-        if (striker and striker.user_id == target_user.id) or (non_striker and non_striker.user_id == target_user.id):
-            await update.message.reply_html("⚠️ Cannot remove a batter currently at the crease!")
+        if any(p and p.user_id == target_user.id for p in (striker, non_striker)):
+            await message.reply_html("⚠️ Cannot remove a batter currently at the crease.")
             return
         if bowler and bowler.user_id == target_user.id:
-            await update.message.reply_html("⚠️ Cannot remove the current active bowler!")
+            await message.reply_html("⚠️ Cannot remove the current active bowler.")
             return
 
-        if team_choice == "team_a":
+        if source == "team_a":
+            player = next(p for p in session.team_a_players if p.user_id == target_user.id)
             session.team_a_players = [p for p in session.team_a_players if p.user_id != target_user.id]
             if session.captain_a_id == target_user.id:
                 session.captain_a_id = session.team_a_players[0].user_id if session.team_a_players else None
+            team_name = session.team_a_name
         else:
+            player = next(p for p in session.team_b_players if p.user_id == target_user.id)
             session.team_b_players = [p for p in session.team_b_players if p.user_id != target_user.id]
             if session.captain_b_id == target_user.id:
                 session.captain_b_id = session.team_b_players[0].user_id if session.team_b_players else None
+            team_name = session.team_b_name
 
-        team_display_name = session.team_a_name if team_choice == "team_a" else session.team_b_name
-        real_name = player_to_remove.name
-        await update.message.reply_html(
-            f"✅ <b>{html.escape(real_name)}</b> has been successfully removed from <b>{html.escape(team_display_name)}</b> by Host."
-        )
+        await message.reply_html(f"✅ <b>{html.escape(player.name)}</b> has been removed from <b>{html.escape(team_name)}</b>.")
         if session.status == "active":
             await _update_team_live_score(context, session)
     except Exception as e:
