@@ -124,6 +124,29 @@ async def safe_edit_or_reply(target, text: str, reply_markup: Optional[InlineKey
         except Exception:
             pass
 
+def batters_ready(session: TeamMatchSession) -> bool:
+    """True when the crease is fully set: striker present and, if the team
+    needs one, a non-striker too. The bowler may only be chosen after this."""
+    striker = session.get_current_striker()
+    if not striker:
+        return False
+    return bool(session.get_current_non_striker()) or not session.needs_non_striker()
+
+
+def _batters_first_text(session: TeamMatchSession) -> str:
+    bat_cap = _team_captain_mention(session, session.batting_team)
+    if session.striker_idx is None and session.non_striker_idx is None and session.needs_non_striker():
+        need = "the striker and non-striker"
+    elif session.needs_non_striker() and session.get_current_striker():
+        need = "the non-striker"
+    else:
+        need = "the next batter"
+    return (
+        f"👉 Batting Captain {bat_cap} (or Host), select {need} first with <code>/batting</code>.\n"
+        f"🎳 The bowler can be chosen only after the batters are at the crease."
+    )
+
+
 def get_team_bowling_keyboard(match_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
@@ -415,11 +438,18 @@ async def _send_team_over_followup(
     if summary.get("ends_swapped") and striker:
         lines.append(f"🔄 Ends swapped! {mention(striker)} is on strike.")
     captain = _team_captain_mention(session, session.bowling_team)
-    lines.extend([
-        "",
-        f"👉 Bowling Captain {captain} (or Host), choose next bowler with:",
-        "<code>/bowling &lt;number&gt;</code>!",
-    ])
+    if batters_ready(session):
+        lines.extend([
+            "",
+            f"👉 Bowling Captain {captain} (or Host), choose next bowler with:",
+            "<code>/bowling &lt;number&gt;</code>!",
+        ])
+    else:
+        lines.extend([
+            "",
+            _batters_first_text(session),
+            f"Then Bowling Captain {captain} (or Host) will choose the next bowler with <code>/bowling</code>.",
+        ])
     await context.bot.send_message(
         chat_id=session.chat_id,
         text="\n".join(lines),
@@ -737,8 +767,8 @@ async def _handle_innings_or_match_end(context: ContextTypes.DEFAULT_TYPE, sessi
             f"┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n"
             f"🎯 <b>Target: {session.target + 1} Runs in {session.max_overs} Overs!</b>\n"
             f"Swapping sides! <b>{new_bat_name}</b> will now Bat.\n\n"
-            f"👉 Batting Captain {bat_cap_name} (or Host), choose openers: <code>/batting</code>\n"
-            f"👉 Bowling Captain {bowl_cap_name} (or Host), choose opening bowler: <code>/bowling</code>"
+            f"👉 Batting Captain {bat_cap_name} (or Host), choose openers first: <code>/batting</code>\n"
+            f"🎳 Then Bowling Captain {bowl_cap_name} (or Host) chooses the opening bowler with <code>/bowling</code>"
         )
         await _update_team_live_score(context, session)
         await context.bot.send_message(
@@ -950,7 +980,9 @@ async def run_team_batter_timer(context: ContextTypes.DEFAULT_TYPE, session: Tea
 
         prompt_lines = [f"👉 Batting Captain {batting_cap_name} (or Host), send next batter with <code>/batting</code>!"]
         if over_complete:
-            prompt_lines.append(f"🏏 <b>OVER COMPLETE!</b>\n👉 Bowling Captain {bowling_cap_name} (or Host), choose next bowler with <code>/bowling</code>!")
+            prompt_lines.append(
+                f"🏏 <b>OVER COMPLETE!</b>\n🎳 After the batter is at the crease, Bowling Captain {bowling_cap_name} (or Host) chooses the next bowler with <code>/bowling</code>!"
+            )
 
         await context.bot.send_message(
             chat_id=session.chat_id,
@@ -1446,8 +1478,8 @@ async def team_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
                     f"┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n"
                     f"🔵 <b>Batting:</b> {bat_name} (Captain: {bat_cap_name})\n"
                     f"🔴 <b>Bowling:</b> {bowl_name} (Captain: {bowl_cap_name})\n\n"
-                    f"👉 Batting Captain {bat_cap_name} (or Host), choose openers: <code>/batting</code>\n"
-                    f"👉 Bowling Captain {bowl_cap_name} (or Host), choose opening bowler: <code>/bowling</code>"
+                    f"👉 Batting Captain {bat_cap_name} (or Host), choose openers first: <code>/batting</code>\n"
+                    f"🎳 Then Bowling Captain {bowl_cap_name} (or Host) chooses the opening bowler with <code>/bowling</code>"
                 )
             try:
                 await query.edit_message_text(
@@ -1821,6 +1853,12 @@ async def bowling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cap_id = session.get_bowling_captain_id()
         if user.id != cap_id and user.id != session.host_id and not permission_service.is_owner(user.id):
             await update.message.reply_html("⚠️ Only the bowling captain or host can select bowlers!")
+            return
+
+        if not batters_ready(session):
+            await update.message.reply_html(
+                "⚠️ <b>Select the batters first!</b>\n" + _batters_first_text(session)
+            )
             return
 
         roster = session.get_bowling_roster()
@@ -2276,8 +2314,8 @@ async def handle_team_chat_input(update: Update, context: ContextTypes.DEFAULT_T
                 f"┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n"
                 f"🎯 <b>Target for {new_bat_name}: {session.target + 1} Runs in {session.max_overs} Overs!</b>\n\n"
                 f"🔄 <b>Sides are swapped!</b> {new_bat_name} will now Bat.\n\n"
-                f"👉 Batting Captain {bat_cap_name} (or Host), choose openers with: <code>/batting</code>\n"
-                f"👉 Bowling Captain {bowl_cap_name} (or Host), choose opening bowler with: <code>/bowling</code>"
+                f"👉 Batting Captain {bat_cap_name} (or Host), choose openers first with: <code>/batting</code>\n"
+                f"🎳 Then Bowling Captain {bowl_cap_name} (or Host) chooses the opening bowler with: <code>/bowling</code>"
             )
             await context.bot.send_message(
                 chat_id=session.chat_id,
