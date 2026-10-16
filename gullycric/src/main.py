@@ -63,6 +63,10 @@ async def main():
     if not acquire_single_instance_lock():
         return
 
+    from .services import db_backup
+    restore_status = await db_backup.restore_latest_if_empty()
+    logger.info("Database restore check: %s", restore_status)
+
     logger.info("Initializing database...")
     await init_db()
 
@@ -72,6 +76,7 @@ async def main():
     from telegram.error import InvalidToken
     app = create_bot_application()
     sweeper.bot = app.bot  # lets the sweeper tidy up pinned lobby messages
+    backup_task = asyncio.create_task(db_backup.run_backup_loop(app.bot))
 
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -123,6 +128,7 @@ async def main():
 
     sweeper.stop()
     sweeper_task.cancel()
+    backup_task.cancel()
 
 if __name__ == "__main__":
     asyncio.run(main())

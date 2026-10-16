@@ -42,6 +42,8 @@ async def owner_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• <code>/mod</code> / <code>/unmod</code> - Make or remove a moderator (owner only)\n"
         f"• <code>/bannigga</code> / <code>/unbannigga</code> - Ban or unban a player (owner + mods)\n"
         f"• <code>/modlist</code> - Show owner and moderators\n"
+        f"• <code>/backupdb</code> - Send the database backup to your DM (auto every 30 min)\n"
+        f"• <code>/restoredb</code> - Reply to a backup .db file to restore all stats (owner only)\n"
         f"• <code>/donate &lt;user_id or @username&gt; &lt;amount&gt;</code> - Add diamonds\n"
         f"• <code>/serverstats</code> - System diagnostics"
     )

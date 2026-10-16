@@ -61,6 +61,7 @@ from .handlers.owner import (
     donate_command,
 )
 from .handlers.team import changeover_command
+from .handlers.dbbackup import backupdb_command, restoredb_command
 from .handlers.moderation import (
     ban_gate,
     bannigga_command,
@@ -174,6 +175,8 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("addrubies", addrubies_command))
     app.add_handler(CommandHandler("donate", donate_command))
     app.add_handler(CommandHandler("serverstats", owner_command))
+    app.add_handler(CommandHandler("backupdb", backupdb_command))
+    app.add_handler(CommandHandler("restoredb", restoredb_command))
     app.add_handler(CommandHandler("mod", mod_command))
     app.add_handler(CommandHandler("unmod", unmod_command))
     app.add_handler(CommandHandler("modlist", modlist_command))
