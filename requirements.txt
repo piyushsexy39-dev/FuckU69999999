@@ -1,0 +1,5 @@
+python-telegram-bot[job-queue,rate-limiter]>=20.0,<22.0
+sqlalchemy[asyncio]>=2.0,<2.2
+greenlet>=3.0.0
+aiosqlite>=0.19.0
+python-dotenv>=1.0
