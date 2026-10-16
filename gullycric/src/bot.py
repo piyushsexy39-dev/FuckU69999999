@@ -45,6 +45,7 @@ from .handlers.team import (
     end_match_command,
     handle_team_chat_input,
     remove_player_command,
+    shift_player_command,
 )
 from .handlers.stats import (
     stats_command,
@@ -139,6 +140,7 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("changehost", change_host_command))
     app.add_handler(CommandHandler("spamfree", spamfree_command))
     app.add_handler(CommandHandler("remove", remove_player_command))
+    app.add_handler(CommandHandler("shift", shift_player_command))
     app.add_handler(CommandHandler("endmatch", end_match_command))
     app.add_handler(CommandHandler("cancelteam", end_match_command))
     app.add_handler(CommandHandler("endteam", end_match_command))
