@@ -113,16 +113,33 @@ async def modlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             rows = (await db.execute(
                 select(UserRecord).where(UserRecord.user_id.in_(list(config.owner_ids)))
             )).scalars().all()
-        names = {r.user_id: r.first_name for r in rows}
+        names = {r.user_id: r.first_name for r in rows if r.first_name}
+    cache = context.application.bot_data.setdefault("display_names", {})
+
+    async def display_name(uid: int, known: Optional[str] = None) -> Optional[str]:
+        """Real name from the database, else Telegram itself (cached)."""
+        if known and not known.startswith("User "):
+            return known
+        if uid in cache:
+            return cache[uid]
+        try:
+            chat = await context.bot.get_chat(uid)
+            name = chat.full_name or chat.first_name or chat.title
+        except Exception:
+            name = None
+        if name:
+            cache[uid] = name
+        return name
+
     lines = ["👑 <b>OWNER</b>"]
     for oid in config.owner_ids:
-        lines.append(f"• {_link(oid, names.get(oid))}")
+        lines.append(f"• {_link(oid, await display_name(oid, names.get(oid)) or "Owner")}")
     lines.append("")
     lines.append(f"🛡️ <b>MODERATORS ({len(moderation_service.mods)})</b>")
     if moderation_service.mods:
         for uid, info in moderation_service.mods.items():
             handle = f" (@{html.escape(info['username'])})" if info.get("username") else ""
-            lines.append(f"• {_link(uid, info.get('name'))}{handle}")
+            lines.append(f"• {_link(uid, await display_name(uid, info.get('name')) or 'Moderator')}{handle}")
     else:
         lines.append("• No moderators yet.")
     await update.effective_message.reply_html("\n".join(lines))
