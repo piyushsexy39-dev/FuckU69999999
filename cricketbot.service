@@ -1,0 +1,23 @@
+[Unit]
+Description=Ultimate Cricket Telegram Bot
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=cricketbot
+WorkingDirectory=/opt/cricket-bot
+EnvironmentFile=/opt/cricket-bot/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/cricket-bot/venv/bin/python server.py
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+TimeoutStopSec=20
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

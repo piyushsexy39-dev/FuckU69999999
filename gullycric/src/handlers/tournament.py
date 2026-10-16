@@ -5,7 +5,7 @@ from ..services.squad_service import squad_service
 
 async def tournament_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "🏆 <b>GULLY PREMIER LEAGUE (GPL)</b> 🏆\n"
+        "🏆 <b>ULTIMATE PREMIER LEAGUE (UPL)</b> 🏆\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n"
         "Welcome to the prestigious street cricket championship!\n"
         "6 Franchises competing for the Mohalla Gold Trophy.\n\n"

@@ -1,0 +1,10 @@
+.env
+.git
+**/__pycache__
+.pytest_cache
+data
+test_*.py
+conftest.py
+*.db
+*.db-wal
+*.db-shm

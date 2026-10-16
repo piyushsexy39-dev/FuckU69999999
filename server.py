@@ -72,7 +72,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div><code>/solo</code> - Quick solo match</div>
         <div><code>/team</code> - Team 5v5 match</div>
         <div><code>/auction</code> - Player auction</div>
-        <div><code>/tournament</code> - Gully Cup</div>
+        <div><code>/tournament</code> - Ultimate Cup</div>
         <div><code>/market</code> - Gear & perks</div>
         <div><code>/stats</code> - Player profile</div>
         <div><code>/help</code> - Gameplay guide</div>

@@ -1091,7 +1091,7 @@ async def team_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             "group administrator" if is_admin and user.id != session.host_id else "host"
         )
         try:
-            backup = json.dumps(session.to_dict(), indent=2).encode("utf-8")
+            backup = json.dumps({"game": "Ultimate Cricket", **session.to_dict()}, indent=2).encode("utf-8")
             await context.bot.send_document(
                 chat_id=chat_id,
                 document=io.BytesIO(backup),

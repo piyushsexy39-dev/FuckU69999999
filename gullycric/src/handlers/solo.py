@@ -215,7 +215,7 @@ async def safe_edit_or_reply(target: Any, text: str, reply_markup: Optional[Inli
 
 def _build_lobby_text(session: MatchSession, listed: int) -> str:
     lines = [
-        f"{emojis.BAT} <b>UltimateCricket BOT - SOLO MATCH LOBBY</b>",
+        f"{emojis.BAT} <b>ULTIMATE CRICKET • SOLO MATCH LOBBY</b>",
         f"{emojis.CROWN} <b>Host:</b> {html.escape(str(session.host_name))}",
         f"{emojis.LIGHTNING} <b>Format:</b> Unlimited Overs · {session.balls_per_turn} Balls/Turn\n",
         f"👥 <b>Players in queue ({len(session.players)}):</b>"
@@ -858,7 +858,7 @@ async def solo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ])
     text = (
-        f"🏏 <b>UltimateCricket BOT - SOLO SETUP</b>\n"
+        f"🏏 <b>ULTIMATE CRICKET • SOLO SETUP</b>\n"
         f"👑 Host: <b>{user.first_name}</b>\n\n"
         f"Choose delivery format per turn:"
     )
@@ -1564,7 +1564,7 @@ async def solo_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             ]
         ])
         text = (
-            f"🏏 <b>UltimateCricket BOT - SOLO SETUP</b>\n"
+            f"🏏 <b>ULTIMATE CRICKET • SOLO SETUP</b>\n"
             f"👑 Host: <b>{user.first_name}</b>\n\n"
             f"Choose delivery format per turn:"
         )
@@ -1708,6 +1708,7 @@ async def solo_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
         cancel_turn_timer(session)
         await unpin_lobby_message(context, session)
         backup_data = {
+            "game": "Ultimate Cricket",
             "match_id": session.match_id,
             "chat_id": session.chat_id,
             "host_id": session.host_id,

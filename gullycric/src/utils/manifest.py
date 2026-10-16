@@ -16,9 +16,9 @@ COMMAND_MANIFEST: List[Dict[str, str]] = [
     {"command": "stats", "description": "View your career stats & win rate"},
     {"command": "profile", "description": "View player card and rank"},
     {"command": "balance", "description": "Check your Coins and Rubies balance"},
-    {"command": "shop", "description": "Browse the Gully Bazaar shop"},
+    {"command": "shop", "description": "Browse the Ultimate Bazaar shop"},
     {"command": "inventory", "description": "View your equipped bats and perks"},
-    {"command": "tournament", "description": "Gully Premier League (GPL) overview"},
+    {"command": "tournament", "description": "Ultimate Premier League (UPL) overview"},
     {"command": "auction", "description": "Player Auction room"},
     {"command": "leaderboard", "description": "Top mohalla batsmen and bowlers"}
 ]
