@@ -162,8 +162,17 @@ def get_team_bowling_keyboard(match_id: str) -> InlineKeyboardMarkup:
     ])
 
 def cancel_team_turn_timer(session: TeamMatchSession):
-    if session.turn_timer_task and not session.turn_timer_task.done():
-        session.turn_timer_task.cancel()
+    task = session.turn_timer_task
+    if task and not task.done():
+        # The AFK timer itself calls this when it ends an innings/match. Cancelling
+        # the task that is currently running would abort it before the scoreboard,
+        # poster and Player of the Match are sent, so never cancel ourselves.
+        try:
+            is_self = task is asyncio.current_task()
+        except RuntimeError:
+            is_self = False
+        if not is_self:
+            task.cancel()
     session.turn_timer_task = None
 
 def start_team_bowler_timer(context: ContextTypes.DEFAULT_TYPE, session: TeamMatchSession):
