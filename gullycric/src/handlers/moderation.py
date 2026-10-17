@@ -82,7 +82,7 @@ async def mod_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await moderation_service.add_mod(target.id, target.name, target.username, user.id)
     await message.reply_html(
         f"🛡️ {_link(target.id, target.name)} is now a <b>moderator</b>. They can use "
-        "<code>/bannigga</code>, <code>/unbannigga</code> and <code>/broadcast</code>."
+        "<code>/fuck</code>, <code>/unfuck</code> and <code>/broadcast</code>."
     )
 
 
@@ -147,13 +147,13 @@ async def modlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_html("\n".join(lines))
 
 
-async def bannigga_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def fuck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner or moderator: ban a player from using the bot."""
     user = update.effective_user
     message = update.effective_message
     await moderation_service.ensure_loaded()
     if not moderation_service.is_staff(user.id):
-        await message.reply_html("⚠️ Only the owner or a moderator can use /bannigga.")
+        await message.reply_html("⚠️ Only the owner or a moderator can use /fuck.")
         return
     target = await _resolve_target(update, context)
     if not target:
@@ -177,13 +177,13 @@ async def bannigga_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def unbannigga_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def unfuck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner or moderator: lift a ban."""
     user = update.effective_user
     message = update.effective_message
     await moderation_service.ensure_loaded()
     if not moderation_service.is_staff(user.id):
-        await message.reply_html("⚠️ Only the owner or a moderator can use /unbannigga.")
+        await message.reply_html("⚠️ Only the owner or a moderator can use /unfuck.")
         return
     target = await _resolve_target(update, context)
     if not target:
