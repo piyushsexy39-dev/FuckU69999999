@@ -103,6 +103,37 @@ async def _send_announcement(bot, chat_id, photo, body):
         await bot.send_message(chat_id=chat_id, text=body, parse_mode="HTML")
 
 
+async def version_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner/moderator: show which build of the code is running right now."""
+    import os
+    from ..services.moderation import moderation_service
+    user = update.effective_user
+    message = update.effective_message
+    await moderation_service.ensure_loaded()
+    if not user or not moderation_service.is_staff(user.id):
+        return
+    sha = ""
+    for key in ("RAILWAY_GIT_COMMIT_SHA", "SOURCE_COMMIT", "GIT_COMMIT", "COMMIT_SHA"):
+        sha = os.getenv(key, "").strip()
+        if sha:
+            break
+    msg_line = os.getenv("RAILWAY_GIT_COMMIT_MESSAGE", "").strip()
+    from . import team as team_handlers
+    rule_present = hasattr(team_handlers, "batters_ready")
+    lines = [
+        "🧩 <b>BOT BUILD INFO</b>",
+        f"🔖 Commit: <code>{html.escape(sha[:7]) if sha else 'unknown (host does not tell)'}</code>",
+    ]
+    if msg_line:
+        lines.append(f"📝 {html.escape(msg_line[:120])}")
+    lines.append(
+        "✅ Batters-before-bowler rule: <b>in this build</b>"
+        if rule_present else
+        "❌ Batters-before-bowler rule: <b>NOT in this build</b> (old version is running)"
+    )
+    await message.reply_html("\n".join(lines))
+
+
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from ..services.moderation import moderation_service
     user = update.effective_user

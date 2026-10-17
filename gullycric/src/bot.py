@@ -56,6 +56,7 @@ from .handlers.stats import (
 from .handlers.owner import (
     owner_command,
     broadcast_command,
+    version_command,
     track_group_chat_update,
     addrubies_command,
     donate_command,
@@ -172,6 +173,7 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("admin", owner_command))
     app.add_handler(CommandHandler("panel", owner_command))
     app.add_handler(CommandHandler("broadcast", broadcast_command))
+    app.add_handler(CommandHandler("version", version_command))
     app.add_handler(MessageHandler(
         filters.PHOTO & filters.CaptionRegex(r"(?i)^/broadcast(@\w+)?(\s|$)"),
         broadcast_command,
