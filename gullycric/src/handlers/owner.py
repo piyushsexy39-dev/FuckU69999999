@@ -41,7 +41,7 @@ async def owner_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🛠️ <b>Quick Admin Commands:</b>\n"
         f"• <code>/broadcast &lt;text&gt;</code> - Broadcast message to users (owner + mods)\n"
         f"• <code>/mod</code> / <code>/unmod</code> - Make or remove a moderator (owner only)\n"
-        f"• <code>/bannigga</code> / <code>/unbannigga</code> - Ban or unban a player (owner + mods)\n"
+        f"• <code>/fuck</code> / <code>/unfuck</code> - Ban or unban a player (owner + mods)\n"
         f"• <code>/modlist</code> - Show owner and moderators\n"
         f"• <code>/backupdb</code> - Send the database backup to your DM (auto every 60 min)\n"
         f"• <code>/restoredb</code> - Reply to a backup .db file to restore all stats (owner only)\n"
