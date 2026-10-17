@@ -1099,6 +1099,8 @@ async def replay_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             team_session = TeamMatchSession.from_dict(data)
             team_session.chat_id = chat_id
             team_session.status = "active"
+            if team_session.striker_idx is None:
+                team_session.striker_faced_ball = False
             team_match_service.active_sessions[chat_id] = team_session
 
             striker = team_session.get_current_striker()

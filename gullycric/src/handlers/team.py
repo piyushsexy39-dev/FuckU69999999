@@ -1744,9 +1744,9 @@ async def batting_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         idx = int(arg_str) - 1
         if 0 <= idx < len(roster):
             target_p = roster[idx]
-            if session.striker_faced_ball and session.striker_idx is None:
-                await update.message.reply_html("⚠️ The active batter is locked for this turn after facing a ball.")
-                return
+            if session.striker_idx is None:
+                # No striker at the crease: nothing can be locked (heals stale flag from old backups)
+                session.striker_faced_ball = False
             if session.striker_faced_ball and session.striker_idx is not None and session.non_striker_idx is not None:
                 await update.message.reply_html("⚠️ The active batter is locked for this turn after facing a ball.")
                 return
