@@ -64,10 +64,10 @@ from .handlers.team import changeover_command
 from .handlers.dbbackup import backupdb_command, restoredb_command
 from .handlers.moderation import (
     ban_gate,
-    bannigga_command,
+    fuck_command,
     mod_command,
     modlist_command,
-    unbannigga_command,
+    unfuck_command,
     unmod_command,
 )
 
@@ -184,8 +184,8 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("mod", mod_command))
     app.add_handler(CommandHandler("unmod", unmod_command))
     app.add_handler(CommandHandler("modlist", modlist_command))
-    app.add_handler(CommandHandler("bannigga", bannigga_command))
-    app.add_handler(CommandHandler("unbannigga", unbannigga_command))
+    app.add_handler(CommandHandler("fuck", fuck_command))
+    app.add_handler(CommandHandler("unfuck", unfuck_command))
 
 
 
