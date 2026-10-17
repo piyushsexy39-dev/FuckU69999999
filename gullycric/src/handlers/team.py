@@ -957,6 +957,7 @@ async def run_team_batter_timer(context: ContextTypes.DEFAULT_TYPE, session: Tea
             bowler.balls_bowled += 1
 
         session.striker_idx = None
+        session.striker_faced_ball = False
         session.ball_in_over += 1
 
         over_complete = False
@@ -2242,6 +2243,7 @@ async def handle_team_chat_input(update: Update, context: ContextTypes.DEFAULT_T
                 session.batting_team, session.bowling_team = session.bowling_team, session.batting_team
                 session.striker_idx = None
                 session.non_striker_idx = None
+                session.striker_faced_ball = False
                 session.current_bowler_id = None
                 session.pending_bowler_pick = None
                 session.ball_in_over = 0
