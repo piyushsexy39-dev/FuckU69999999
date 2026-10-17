@@ -292,7 +292,7 @@ async def menu_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             "• <code>/bowling</code> - Captain/Host views bowling attack\n"
             "• <code>/bowling &lt;n&gt;</code> - Captain/Host selects bowler for over\n"
             "• <code>/forceadd [a/b] @user</code> - Host adds player during match\n"
-            "• <code>/changecap [a/b]</code> - Host/Captains rotate team captain\n"
+            "• <code>/changecap</code> (reply/@user) - Captain hands captaincy to a teammate\n"
             "• <code>/changehost</code> - Host transfers Game Master role\n"
             "• <code>/spamfree</code> - Host, captains, or bot owner toggle repeat-delivery protection\n"
             "• <code>/penalty +6</code> / <code>/penalty -5</code> - Host/Owner add or cut runs (reply to a player or add a/b)\n"

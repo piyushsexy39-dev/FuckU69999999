@@ -2528,48 +2528,69 @@ async def score_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _send_team_detailed_scorecard(update, context, session)
 
 async def change_cap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Team Captain command: /changecap [a/b]."""
+    """Team captain only: /changecap (reply / @username / user_id) hands captaincy to a teammate."""
     try:
+        message = update.effective_message
         chat = update.effective_chat
         user = update.effective_user
         session = team_match_service.get_session(chat.id)
         if not session:
-            await update.message.reply_html("❌ No active team match setup found!")
+            await message.reply_html("❌ No active team match setup found!")
             return
         if session.status in ("toss_call", "toss_decision"):
-            await update.message.reply_html("⚠️ Captains cannot be changed while the toss is in progress.")
+            await message.reply_html("⚠️ Captains cannot be changed while the toss is in progress.")
             return
 
-        side = context.args[0].lower() if context.args else ""
-        if not side:
-            if user.id == session.captain_a_id:
-                side = "a"
-            elif user.id == session.captain_b_id:
-                side = "b"
-            else:
-                side = "a"
+        if user.id == session.captain_a_id:
+            side, players = "a", session.team_a_players
+        elif user.id == session.captain_b_id:
+            side, players = "b", session.team_b_players
+        else:
+            await message.reply_html("⚠️ Only a team captain can use /changecap.")
+            return
 
-        is_owner = permission_service.is_owner(user.id)
-        if side in ("a", "1"):
-            if user.id != session.captain_a_id and not is_owner:
-                await update.message.reply_html("⚠️ Only Team A's current captain can change Team A's captain!")
-                return
-            if not session.team_a_players:
-                return
-            curr_idx = next((i for i, p in enumerate(session.team_a_players) if p.user_id == session.captain_a_id), 0)
-            next_idx = (curr_idx + 1) % len(session.team_a_players)
-            session.captain_a_id = session.team_a_players[next_idx].user_id
-            await update.message.reply_html(f"👑 {mention(session.team_a_players[next_idx])} is now Captain of Team A!")
-        elif side in ("b", "2"):
-            if user.id != session.captain_b_id and not is_owner:
-                await update.message.reply_html("⚠️ Only Team B's current captain can change Team B's captain!")
-                return
-            if not session.team_b_players:
-                return
-            curr_idx = next((i for i, p in enumerate(session.team_b_players) if p.user_id == session.captain_b_id), 0)
-            next_idx = (curr_idx + 1) % len(session.team_b_players)
-            session.captain_b_id = session.team_b_players[next_idx].user_id
-            await update.message.reply_html(f"👑 {mention(session.team_b_players[next_idx])} is now Captain of Team B!")
+        target_id = None
+        if message.reply_to_message and message.reply_to_message.from_user:
+            target_id = message.reply_to_message.from_user.id
+        else:
+            text = message.text or ""
+            for ent in (message.entities or []):
+                if ent.type == "text_mention" and ent.user:
+                    target_id = ent.user.id
+                    break
+            if target_id is None and context.args:
+                raw = context.args[-1].strip().lstrip("@")
+                if raw.isdigit():
+                    target_id = int(raw)
+                elif raw:
+                    async with async_session_factory() as db_session:
+                        rec = (await db_session.execute(
+                            select(UserRecord).where(func.lower(UserRecord.username) == raw.lower())
+                        )).scalar_one_or_none()
+                    if rec:
+                        target_id = rec.user_id
+                    else:
+                        await message.reply_html("⚠️ Username not found. Reply to the player's message or tag them.")
+                        return
+        if target_id is None:
+            await message.reply_html(
+                "Usage: reply to a teammate with <code>/changecap</code>, or <code>/changecap @username</code>."
+            )
+            return
+
+        new_cap = next((p for p in players if p.user_id == target_id), None)
+        if not new_cap:
+            await message.reply_html("⚠️ That player is not in your team!")
+            return
+        if new_cap.user_id == user.id:
+            await message.reply_html("ℹ️ You are already the captain.")
+            return
+
+        if side == "a":
+            session.captain_a_id = new_cap.user_id
+        else:
+            session.captain_b_id = new_cap.user_id
+        await message.reply_html(f"👑 {mention(new_cap)} is now Captain of Team {side.upper()}!")
     except Exception as e:
         logger.error(f"Error in change_cap_command: {e}", exc_info=True)
 
