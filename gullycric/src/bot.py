@@ -175,7 +175,7 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("broadcast", broadcast_command))
     app.add_handler(CommandHandler("version", version_command))
     app.add_handler(MessageHandler(
-        filters.PHOTO & filters.CaptionRegex(r"(?i)^/broadcast(@\w+)?(\s|$)"),
+        filters.PHOTO & filters.CaptionRegex(r"(?i)^/broadcast(@\\w+)?(\\s|$)"),
         broadcast_command,
     ))
     app.add_handler(CommandHandler("addrubies", addrubies_command))
@@ -183,10 +183,8 @@ def create_bot_application() -> Application:
     app.add_handler(CommandHandler("serverstats", owner_command))
     app.add_handler(CommandHandler("backupdb", backupdb_command))
     app.add_handler(CommandHandler("restoredb", restoredb_command))
-    app.add_handler(CommandHandler("bemykid", mod_command))
-    app.add_handler(CommandHandler("Bemykid", mod_command))
-    app.add_handler(CommandHandler("someoneelsekid", unmod_command))
-    app.add_handler(CommandHandler("Someoneelsekid", unmod_command))
+    app.add_handler(CommandHandler("mod", mod_command))
+    app.add_handler(CommandHandler("unmod", unmod_command))
     app.add_handler(CommandHandler("modlist", modlist_command))
     app.add_handler(CommandHandler("fuck", fuck_command))
     app.add_handler(CommandHandler("unfuck", unfuck_command))
