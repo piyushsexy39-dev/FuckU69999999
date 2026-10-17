@@ -1921,7 +1921,7 @@ async def bowling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        if session.ball_in_over > 0:
+        if session.ball_in_over > 0 and session.get_current_bowler() is not None:
             await update.message.reply_html("⚠️ The current bowler is locked until this over is complete.")
             return
 
